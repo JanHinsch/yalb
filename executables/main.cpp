@@ -1,17 +1,68 @@
-#include <iostream>
-#include <filesystem>
-#include <mpi.h>
-#include <Kokkos_Core.hpp>
+#include "computations.hpp"
 #include "d2q9.hpp"
 #include "fields.hpp"
+#include "output.hpp"
+#include <Kokkos_Core.hpp>
+#include <filesystem>
+#include <iostream>
+#include <mpi.h>
+#include "output.hpp"
 
 void run_simulation()
 {
-    int nx = 128;
-    int ny = 128;
+    int nx = 15;
+    int ny = 10;
 
-    lbm::DistributionField f("f", lbm::Q, nx, ny);
-    lbm::DistributionField f_next("f_next", lbm::Q, nx, ny);
+    DistributionField f("f", Q, nx, ny);
+    DistributionField f_next("f_next", Q, nx, ny);
+
+    ScalarField rho("rho", nx, ny);
+    ScalarField ux("ux",nx, ny);
+    ScalarField uy("uy",nx, ny);
+
+    // init everything to 0 (I use (q,x,z) instead of (x,y,q) apparently thats
+    // faster) TODO: check this again why this is the case
+    // TODO: (also am I using LayoutLeft or LayotRight) i think right for now
+    Kokkos::parallel_for(
+    "initialize",
+    Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+        {0,0,0},
+        {Q,nx,ny}
+    ),
+    [=](int q, int x, int y)
+    {
+        f(q,x,y) = 0.0;
+    });
+
+    // all flow right
+    Kokkos::parallel_for(
+    "initialize_east_flow",
+    Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
+        {0,0},
+        {nx,ny}
+    ),
+    [=](int x, int y)
+    {
+        f(1,x,y) = 1.0;
+    });
+
+    // main algorithm
+    for(int step = 0; step < 100; ++step) {
+
+        compute_density(f, rho, nx, ny);
+        compute_velocity(f, rho, ux, uy, nx, ny);
+
+        streaming(f, f_next, nx, ny);
+
+        std::swap(f, f_next);
+
+        if(step % 50 == 0)
+        {
+            std::string filename = "../../output/velocity_field_step_" + std::to_string(step) + ".csv";
+            output_velocity_field_csv(ux, uy, filename, nx, ny);
+        }
+
+    }
 }
 
 int main(int argc, char *argv[]) {

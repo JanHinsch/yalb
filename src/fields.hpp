@@ -6,11 +6,8 @@
 
 #include <Kokkos_Core.hpp>
 
-namespace lbm {
+// for pdf
+using DistributionField = Kokkos::View<double***>;
 
-    // for pdf
-    using DistributionField = Kokkos::View<double***>;
-
-    // for quantities
-    using LatticeField = Kokkos::View<double***>;
-}
+// for quantities
+using ScalarField = Kokkos::View<double**>;

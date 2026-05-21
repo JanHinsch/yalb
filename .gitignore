@@ -1,3 +1,5 @@
+output/
+
 # Custom files here
 *.xyz
 .idea
