@@ -10,12 +10,13 @@
 
 void run_simulation()
 {
-    int nx = 15;
-    int ny = 10;
+    int nx = 150;
+    int ny = 100;
 
-    DistributionField f("f", Q, nx, ny);
-    DistributionField f_next("f_next", Q, nx, ny);
+    DistributionField f("f",nx, ny, Q);
+    DistributionField f_next("f_next",nx, ny, Q);
 
+    // TODO: später villeicht on the fly berechnen
     ScalarField rho("rho", nx, ny);
     ScalarField ux("ux",nx, ny);
     ScalarField uy("uy",nx, ny);
@@ -23,43 +24,59 @@ void run_simulation()
     // init everything to 0 (I use (q,x,z) instead of (x,y,q) apparently thats
     // faster) TODO: check this again why this is the case
     // TODO: (also am I using LayoutLeft or LayotRight) i think right for now
+    // Kokkos::parallel_for(
+    // "initialize",
+    // Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
+    //     {0,0,0},
+    //     {nx,ny, Q}
+    // ),
+    // [=](int x, int y, int q)
+    // {
+    //     f(x,y, q) = 0.0;
+    // });
+
     Kokkos::parallel_for(
     "initialize",
-    Kokkos::MDRangePolicy<Kokkos::Rank<3>>(
-        {0,0,0},
-        {Q,nx,ny}
-    ),
-    [=](int q, int x, int y)
-    {
-        f(q,x,y) = 0.0;
-    });
-
-    // all flow right
-    Kokkos::parallel_for(
-    "initialize_east_flow",
     Kokkos::MDRangePolicy<Kokkos::Rank<2>>(
         {0,0},
-        {nx,ny}
-    ),
+        {nx,ny}),
     [=](int x, int y)
     {
-        f(1,x,y) = 1.0;
+        double rho_init = 1.0;
+
+        // slightly higher density in center
+        if(x == nx/2 && y == ny/2)
+        {
+            rho_init = 1.3;
+        }
+
+        for(int q = 0; q < Q; ++q)
+        {
+            f(x,y,q) = w[q] * rho_init;
+        }
     });
 
+
+    Kokkos::fence();
     // main algorithm
     for(int step = 0; step < 100; ++step) {
 
         compute_density(f, rho, nx, ny);
         compute_velocity(f, rho, ux, uy, nx, ny);
 
+        collison(f, rho, ux, uy, omega, nx, ny);
+
         streaming(f, f_next, nx, ny);
 
         std::swap(f, f_next);
 
-        if(step % 50 == 0)
-        {
-            std::string filename = "../../output/velocity_field_step_" + std::to_string(step) + ".csv";
-            output_velocity_field_csv(ux, uy, filename, nx, ny);
+
+        // std::string filename = "../../output/velocity_field_step_" + std::to_string(step) + ".csv";
+        // output_velocity_field_csv(ux, uy, filename, nx, ny);
+
+        if (step % 10 == 0) {
+            std::string filename = "../../output/csv/density_field_step_" + std::to_string(step) + ".csv";
+            output_scalar_field_csv(rho, filename, nx, ny);
         }
 
     }

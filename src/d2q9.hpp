@@ -6,8 +6,25 @@
 #include <array>
 
 
-const int Q = 9;
+constexpr int Q = 9;
 
-const std::array<int, Q> cx = { 0, 1, 0, -1, 0, 1, -1, -1, 1 };
+constexpr double omega = 1.2;
 
-const std::array<int, Q> cy = { 0, 0, 1, 0, -1, 1, 1, -1, -1 };
+constexpr std::array<int, Q> cx = { 0, 1, 0, -1, 0, 1, -1, -1, 1 };
+
+constexpr std::array<int, Q> cy = { 0, 0, 1, 0, -1, 1, 1, -1, -1 };
+
+constexpr std::array<double, Q> w =
+{
+    4.0 / 9.0,
+
+    1.0 / 9.0,
+    1.0 / 9.0,
+    1.0 / 9.0,
+    1.0 / 9.0,
+
+    1.0 / 36.0,
+    1.0 / 36.0,
+    1.0 / 36.0,
+    1.0 / 36.0
+};
